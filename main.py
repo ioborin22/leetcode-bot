@@ -13,6 +13,7 @@ config = Config()
 # Чтение API ключа
 api_key = config.get('API_KEY')
 
+
 # Функция для получения задачи с LeetCode
 def fetch_problem(url):
     chrome_options = Options()

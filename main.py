@@ -6,9 +6,12 @@ from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import TimeoutException
+from decouple import Config, Csv
 
-# Установите ваш API ключ от OpenAI
-api_key = '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'
+
+config = Config()
+# Чтение API ключа
+api_key = config.get('API_KEY')
 
 # Функция для получения задачи с LeetCode
 def fetch_problem(url):

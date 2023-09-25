@@ -6,15 +6,12 @@ from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import TimeoutException
-from decouple import Config, Csv
+from selenium.webdriver.common.keys import Keys
 
+# Ваш API ключ от OpenAI
+api_key = ''
 
-config = Config()
-# Чтение API ключа
-api_key = config.get('API_KEY')
-
-
-# Функция для получения задачи с LeetCode
+# Функция для получения текста задачи с LeetCode
 def fetch_problem(url):
     chrome_options = Options()
     driver = webdriver.Chrome(options=chrome_options)
@@ -52,13 +49,17 @@ def fetch_problem(url):
         driver.quit()
 
 # Функция для отправки задачи в GPT-3.5 и получения ответа
-def generate_response(prompt):
+def generate_response(problem_text, programming_language):
     try:
         openai.api_key = api_key
+
+        # Создаем шаблон кода на указанном языке программирования
+        prompt = f"Solve the following problem in {programming_language}:\n\n{problem_text}\n\nSolution:"
+
         response = openai.Completion.create(
             engine="text-davinci-002",
             prompt=prompt,
-            max_tokens=150  # Максимальное количество токенов в ответе (можете изменить по вашему усмотрению)
+            max_tokens=2000  # Максимальное количество токенов в ответе (можете изменить по вашему усмотрению)
         )
 
         if response.choices:
@@ -70,15 +71,52 @@ def generate_response(prompt):
         print(f"An error occurred: {e}")
         return "An error occurred while generating a response"
 
+# Основная функция
 if __name__ == '__main__':
     # URL задачи на LeetCode
-    url = 'https://leetcode.com/problems/search-insert-position/'
+    url = 'https://leetcode.com/problems/valid-anagram/'
 
     # Получаем текст задачи
     problem_text = fetch_problem(url)
 
-    # Генерируем ответ с использованием GPT-3.5
-    response = generate_response(problem_text)
+    # Указываем язык программирования
+    programming_language = 'Python'  # Замените на нужный вам язык
 
-    # Выводим ответ
-    print(response)
+    # Генерируем ответ с использованием GPT-3.5
+    response = generate_response(problem_text, programming_language)
+
+    # Открываем браузер и переходим на страницу входа
+    driver = webdriver.Chrome()
+    driver.get('https://leetcode.com/accounts/login/')
+
+    try:
+        # Находим поля для ввода логина и пароля
+        username_input = driver.find_element(By.NAME, 'login')
+        password_input = driver.find_element(By.NAME, 'password')
+
+        # Вводим учетные данные
+        username_input.send_keys('')
+        password_input.send_keys('')
+
+        # Нажимаем Enter, чтобы выполнить вход
+        password_input.send_keys(Keys.RETURN)
+
+        # После успешного входа переходим на страницу задачи
+        driver.get(url)
+
+        # Находим поле для ввода кода
+        wait = WebDriverWait(driver, 30)
+        code_input = wait.until(EC.presence_of_element_located((By.XPATH, "//textarea[@data-cy='code-editor']")))
+
+        # Вставляем сгенерированный код
+        code_input.send_keys(response)
+
+        # Нажимаем Ctrl + Enter, чтобы выполнить код
+        code_input.send_keys(Keys.CONTROL, Keys.RETURN)
+
+    except Exception as e:
+        print(f"An error occurred while submitting the code: {e}")
+
+    finally:
+        # Закрываем браузер
+        driver.quit()
